@@ -1,0 +1,48 @@
+{
+  "nav": {
+    "dashboard": "Panel de Control",
+    "admin": "Administración",
+    "docente": "Docente",
+    "estudiante": "Estudiante",
+    "supervisor": "Supervisor",
+    "logout": "Cerrar Sesión",
+    "profile": "Mi Perfil",
+    "search": "Buscar comando..."
+  },
+  "common": {
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "actions": "Acciones",
+    "status": "Estado",
+    "date": "Fecha",
+    "language": "Idioma"
+  },
+  "stats": {
+    "attendance_rate": "Tasa de Asistencia",
+    "tardiness": "Tardanzas",
+    "absences": "Ausencias",
+    "justifications": "Justificaciones",
+    "active_students": "Estudiantes Activos",
+    "critical_threshold": "Bajo umbral crítico (80%)"
+  },
+  "attendance": {
+    "title": "Control de Asistencia",
+    "select_subject": "Seleccionar Asignatura",
+    "select_date": "Seleccionar Fecha",
+    "present": "Presente",
+    "late": "Tarde",
+    "absent": "Ausente",
+    "excused": "Justificado",
+    "delay_minutes": "Minutos de retraso",
+    "save_success": "Asistencia guardada exitosamente",
+    "save_error": "Error al guardar la asistencia",
+    "student_name": "Estudiante"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "empty": "No tienes notificaciones pendientes",
+    "mark_all_read": "Marcar todas como leídas",
+    "toast_new": "Nueva notificación recibida"
+  }
+}

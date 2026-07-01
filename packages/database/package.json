@@ -1,0 +1,16 @@
+{
+  "name": "@asistapp/database",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Base de datos y configuraciones de Supabase para AsistApp",
+  "scripts": {
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "db:reset": "supabase db reset",
+    "db:lint": "supabase db lint"
+  },
+  "devDependencies": {
+    "supabase": "^1.165.0"
+  }
+}

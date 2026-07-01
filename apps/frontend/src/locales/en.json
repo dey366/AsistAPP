@@ -1,0 +1,48 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "admin": "Administration",
+    "docente": "Teacher",
+    "estudiante": "Student",
+    "supervisor": "Supervisor",
+    "logout": "Log Out",
+    "profile": "My Profile",
+    "search": "Search command..."
+  },
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "actions": "Actions",
+    "status": "Status",
+    "date": "Date",
+    "language": "Language"
+  },
+  "stats": {
+    "attendance_rate": "Attendance Rate",
+    "tardiness": "Tardiness",
+    "absences": "Absences",
+    "justifications": "Justifications",
+    "active_students": "Active Students",
+    "critical_threshold": "Below critical threshold (80%)"
+  },
+  "attendance": {
+    "title": "Attendance Control",
+    "select_subject": "Select Subject",
+    "select_date": "Select Date",
+    "present": "Present",
+    "late": "Late",
+    "absent": "Absent",
+    "excused": "Excused",
+    "delay_minutes": "Minutes of delay",
+    "save_success": "Attendance saved successfully",
+    "save_error": "Failed to save attendance",
+    "student_name": "Student"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "You have no pending notifications",
+    "mark_all_read": "Mark all as read",
+    "toast_new": "New notification received"
+  }
+}

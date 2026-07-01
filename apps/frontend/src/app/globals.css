@@ -1,0 +1,360 @@
+@import "tailwindcss";
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 240 5.9% 10%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 240 5.9% 10%;
+  --radius: 0.5rem;
+
+  /* Colores Semánticos de Asistencia */
+  --asist-presente: 142.7 70.6% 45.3%;
+  --asist-tarde: 37.9 92.1% 50.2%;
+  --asist-ausente: 0 84.2% 60.2%;
+  --asist-justificado: 239 84.3% 66.7%;
+
+  /* Brand / Accent Dynamic Variables (Default: Violet) */
+  --brand: 262.1 83.3% 57.8%;
+  --brand-hover: 262.1 83.3% 47.8%;
+  --brand-light: 262.1 83.3% 96%;
+  --brand-border: 262.1 83.3% 90%;
+  --brand-text: 262.1 83.3% 40%;
+}
+
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 240 5.9% 10%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 240 4.9% 83.9%;
+
+  /* Colores Semánticos en modo oscuro */
+  --asist-presente: 142.7 70.6% 35%;
+  --asist-tarde: 37.9 92.1% 40%;
+  --asist-ausente: 0 84.2% 45%;
+  --asist-justificado: 239 84.3% 55%;
+
+  /* Brand / Accent Dynamic Variables Dark Mode (Default: Violet) */
+  --brand: 250 95% 70%;
+  --brand-hover: 250 95% 80%;
+  --brand-light: 262.1 83.3% 12%;
+  --brand-border: 262.1 83.3% 25%;
+  --brand-text: 250 95% 80%;
+}
+
+/* ==========================================================================
+   Accent Colors Overrides
+   ========================================================================== */
+
+/* Violet */
+.accent-violet {
+  --brand: 262.1 83.3% 57.8%;
+  --brand-hover: 262.1 83.3% 47.8%;
+  --brand-light: 262.1 83.3% 96%;
+  --brand-border: 262.1 83.3% 90%;
+  --brand-text: 262.1 83.3% 40%;
+}
+.dark .accent-violet,
+.accent-violet.dark,
+.accent-violet .dark {
+  --brand: 250 95% 70%;
+  --brand-hover: 250 95% 80%;
+  --brand-light: 262.1 83.3% 12%;
+  --brand-border: 262.1 83.3% 25%;
+  --brand-text: 250 95% 80%;
+}
+
+/* Emerald */
+.accent-emerald {
+  --brand: 142.1 76.2% 36.3%;
+  --brand-hover: 142.1 76.2% 29.4%;
+  --brand-light: 142.1 76.2% 96%;
+  --brand-border: 142.1 76.2% 90%;
+  --brand-text: 142.1 76.2% 25%;
+}
+.dark .accent-emerald,
+.accent-emerald.dark,
+.accent-emerald .dark {
+  --brand: 142.1 70% 50%;
+  --brand-hover: 142.1 70% 60%;
+  --brand-light: 142.1 76.2% 12%;
+  --brand-border: 142.1 76.2% 25%;
+  --brand-text: 142.1 70% 75%;
+}
+
+/* Blue */
+.accent-blue {
+  --brand: 221.2 83.2% 53.3%;
+  --brand-hover: 221.2 83.2% 43.3%;
+  --brand-light: 221.2 83.2% 96%;
+  --brand-border: 221.2 83.2% 90%;
+  --brand-text: 221.2 83.2% 35%;
+}
+.dark .accent-blue,
+.accent-blue.dark,
+.accent-blue .dark {
+  --brand: 217.2 91.2% 60%;
+  --brand-hover: 217.2 91.2% 70%;
+  --brand-light: 221.2 83.2% 12%;
+  --brand-border: 221.2 83.2% 25%;
+  --brand-text: 217.2 91.2% 80%;
+}
+
+/* Indigo */
+.accent-indigo {
+  --brand: 239 84% 57%;
+  --brand-hover: 239 84% 47%;
+  --brand-light: 239 84% 96%;
+  --brand-border: 239 84% 90%;
+  --brand-text: 239 84% 35%;
+}
+.dark .accent-indigo,
+.accent-indigo.dark,
+.accent-indigo .dark {
+  --brand: 234 89.5% 65%;
+  --brand-hover: 234 89.5% 75%;
+  --brand-light: 239 84% 12%;
+  --brand-border: 239 84% 25%;
+  --brand-text: 234 89.5% 80%;
+}
+
+/* Amber */
+.accent-amber {
+  --brand: 37.9 92.1% 50.2%;
+  --brand-hover: 37.9 92.1% 40.2%;
+  --brand-light: 37.9 92.1% 96%;
+  --brand-border: 37.9 92.1% 90%;
+  --brand-text: 37.9 92.1% 30%;
+}
+.dark .accent-amber,
+.accent-amber.dark,
+.accent-amber .dark {
+  --brand: 37.9 90% 60%;
+  --brand-hover: 37.9 90% 70%;
+  --brand-light: 37.9 92.1% 12%;
+  --brand-border: 37.9 92.1% 25%;
+  --brand-text: 37.9 90% 80%;
+}
+
+/* Rose */
+.accent-rose {
+  --brand: 349.7 89.2% 60.2%;
+  --brand-hover: 349.7 89.2% 50.2%;
+  --brand-light: 349.7 89.2% 96%;
+  --brand-border: 349.7 89.2% 90%;
+  --brand-text: 349.7 89.2% 35%;
+}
+.dark .accent-rose,
+.accent-rose.dark,
+.accent-rose .dark {
+  --brand: 349.7 85% 65%;
+  --brand-hover: 349.7 85% 75%;
+  --brand-light: 349.7 89.2% 12%;
+  --brand-border: 349.7 89.2% 25%;
+  --brand-text: 349.7 85% 80%;
+}
+
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  
+  /* Estados de asistencia */
+  --color-presente: hsl(var(--asist-presente));
+  --color-tarde: hsl(var(--asist-tarde));
+  --color-ausente: hsl(var(--asist-ausente));
+  --color-justificado: hsl(var(--asist-justificado));
+
+  /* Marca / Color de Acento Dinámico */
+  --color-brand: hsl(var(--brand));
+  --color-brand-hover: hsl(var(--brand-hover));
+  --color-brand-light: hsl(var(--brand-light));
+  --color-brand-border: hsl(var(--brand-border));
+  --color-brand-text: hsl(var(--brand-text));
+  
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@media print {
+  /* Ocultar elementos no deseados en la impresión académica */
+  aside,
+  header,
+  nav,
+  .no-print,
+  button,
+  .button,
+  [role="status"],
+  .toast-container,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Resetear el layout para ocupar toda la página */
+  body, 
+  html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 11pt !important;
+  }
+
+  /* Ajustar el contenedor principal */
+  main,
+  .main-content,
+  .dashboard-container {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* Asegurar que las tablas académicas tengan bordes profesionales y no se corten */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 20px !important;
+    margin-bottom: 20px !important;
+    page-break-inside: auto !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tfoot {
+    display: table-footer-group !important;
+  }
+
+  th, 
+  td {
+    border: 1px solid #e2e8f0 !important;
+    padding: 8px 12px !important;
+    text-align: left !important;
+    font-size: 9pt !important;
+    color: #0f172a !important;
+    background: transparent !important;
+  }
+
+  th {
+    background-color: #f8fafc !important;
+    font-weight: 600 !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+  }
+
+  /* Formatear encabezados de reportes */
+  .report-header {
+    display: block !important;
+    margin-bottom: 30px !important;
+    border-bottom: 2px solid #0f172a !important;
+    padding-bottom: 10px !important;
+  }
+
+  /* Espacio para firmas en reportes académicos */
+  .academic-signature-area {
+    display: flex !important;
+    justify-content: space-between !important;
+    margin-top: 80px !important;
+    page-break-inside: avoid !important;
+  }
+
+  .signature-line {
+    width: 200px !important;
+    border-top: 1px solid #94a3b8 !important;
+    text-align: center !important;
+    padding-top: 8px !important;
+    font-size: 8pt !important;
+    color: #475569 !important;
+  }
+
+  /* Mantener el color semántico básico si la impresora lo soporta (pero optimizado para lectura) */
+  .bg-presente, .text-presente {
+    color: #047857 !important; /* Emerald 700 */
+    border-color: #047857 !important;
+  }
+  .bg-tarde, .text-tarde {
+    color: #b45309 !important; /* Amber 700 */
+    border-color: #b45309 !important;
+  }
+  .bg-ausente, .text-ausente {
+    color: #b91c1c !important; /* Red 700 */
+    border-color: #b91c1c !important;
+  }
+  .bg-justificado, .text-justificado {
+    color: #4338ca !important; /* Indigo 700 */
+    border-color: #4338ca !important;
+  }
+
+  /* Optimizar gráficos para impresión */
+  .recharts-responsive-container {
+    max-width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid !important;
+  }
+}
