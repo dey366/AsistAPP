@@ -7,8 +7,34 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model Tenant {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @unique @db.VarChar(150)
+  subdomain String?  @unique @db.VarChar(100)
+  isActive  Boolean? @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  users             User[]
+  academicPeriods   AcademicPeriod[]
+  departments       Department[]
+  careers           Career[]
+  subjects          Subject[]
+  classrooms        Classroom[]
+  schedules         Schedule[]
+  attendanceRecords AttendanceRecord[]
+  justifications    Justification[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  tolerancePolicies TolerancePolicy[]
+  holidays          Holiday[]
+  tenantSettings    TenantSetting?
+
+  @@map("tenants")
+}
+
 model AcademicPeriod {
   id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String?    @map("tenant_id") @db.Uuid
   name      String     @db.VarChar(100)
   startDate DateTime   @map("start_date") @db.Date
   endDate   DateTime   @map("end_date") @db.Date
@@ -16,28 +42,40 @@ model AcademicPeriod {
   createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz
   schedules Schedule[]
 
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
   @@map("academic_periods")
 }
 
 model Department {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name      String   @unique @db.VarChar(150)
-  code      String   @unique @db.VarChar(10)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  careers   Career[]
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String?     @map("tenant_id") @db.Uuid
+  name          String      @unique @db.VarChar(150)
+  code          String      @unique @db.VarChar(10)
+  coordinatorId String?     @map("coordinator_id") @db.Uuid
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  careers       Career[]
+  classrooms    Classroom[]
+
+  tenant      Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  coordinator User?   @relation("DepartmentCoordinator", fields: [coordinatorId], references: [id], onDelete: SetNull)
 
   @@map("departments")
 }
 
 model Career {
-  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  departmentId String     @map("department_id") @db.Uuid
-  name         String     @db.VarChar(150)
-  code         String     @unique @db.VarChar(10)
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  subjects     Subject[]
-  users        User[]
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String?           @map("tenant_id") @db.Uuid
+  departmentId      String            @map("department_id") @db.Uuid
+  name              String            @db.VarChar(150)
+  code              String            @unique @db.VarChar(10)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  department        Department        @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  subjects          Subject[]
+  users             User[]
+  tolerancePolicies TolerancePolicy[]
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   @@map("careers")
 }
@@ -73,67 +111,89 @@ model RolePermission {
 }
 
 model User {
-  id        String   @id @db.Uuid
-  email     String   @unique @db.VarChar(255)
-  firstName String   @map("first_name") @db.VarChar(100)
-  lastName  String   @map("last_name") @db.VarChar(100)
-  roleId    String?  @map("role_id") @db.VarChar(50)
-  careerId  String?  @map("career_id") @db.Uuid
-  isActive  Boolean? @default(true) @map("is_active")
-  avatarUrl String?  @map("avatar_url") @db.VarChar(255)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id            String   @id @db.Uuid
+  tenantId      String?  @map("tenant_id") @db.Uuid
+  email         String   @unique @db.VarChar(255)
+  firstName     String   @map("first_name") @db.VarChar(100)
+  lastName      String   @map("last_name") @db.VarChar(100)
+  roleId        String?  @map("role_id") @db.VarChar(50)
+  careerId      String?  @map("career_id") @db.Uuid
+  isActive      Boolean? @default(true) @map("is_active")
+  avatarUrl     String?  @map("avatar_url") @db.VarChar(255)
+  uiPreferences Json?    @default("{}") @map("ui_preferences")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   role   Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
   career Career? @relation(fields: [careerId], references: [id], onDelete: SetNull)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   schedulesTeached            Schedule[]         @relation("TeacherSchedules")
   attendanceRecordsRegistered AttendanceRecord[] @relation("RegisteredByAttendance")
   attendanceRecordsStudent    AttendanceRecord[] @relation("StudentAttendance")
   auditLogs                   AuditLog[]
   justificationsReviewed      Justification[]    @relation("ReviewedByJustification")
+  departmentsCoordinated      Department[]       @relation("DepartmentCoordinator")
+  notifications               Notification[]
 
   @@map("users")
 }
 
 model Subject {
-  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  careerId  String     @map("career_id") @db.Uuid
-  name      String     @db.VarChar(150)
-  code      String     @unique @db.VarChar(20)
-  credits   Int?       @default(0)
-  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  career    Career     @relation(fields: [careerId], references: [id], onDelete: Cascade)
-  schedules Schedule[]
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String?           @map("tenant_id") @db.Uuid
+  careerId     String            @map("career_id") @db.Uuid
+  name         String            @db.VarChar(150)
+  code         String            @unique @db.VarChar(20)
+  credits      Int?              @default(0)
+  semester     String?           @db.VarChar(10)
+  academicYear String?           @map("academic_year") @db.VarChar(20)
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  career       Career            @relation(fields: [careerId], references: [id], onDelete: Cascade)
+  schedules    Schedule[]
+  tolerances   TolerancePolicy[]
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   @@map("subjects")
 }
 
 model Classroom {
-  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name      String     @db.VarChar(50)
-  building  String?    @db.VarChar(100)
-  capacity  Int?
-  schedules Schedule[]
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String?    @map("tenant_id") @db.Uuid
+  name         String     @db.VarChar(50)
+  building     String?    @db.VarChar(100)
+  capacity     Int?
+  floor        String?
+  resources    String[]
+  departmentId String?    @map("department_id") @db.Uuid
+  isActive     Boolean?   @default(true) @map("is_active")
+  schedules    Schedule[]
+
+  tenant     Tenant?     @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 
   @@map("classrooms")
 }
 
 model Schedule {
-  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  subjectId        String            @map("subject_id") @db.Uuid
-  teacherId        String            @map("teacher_id") @db.Uuid
-  classroomId      String?           @map("classroom_id") @db.Uuid
-  academicPeriodId String            @map("academic_period_id") @db.Uuid
-  dayOfWeek        Int               @map("day_of_week")
-  startTime        String            @map("start_time") @db.VarChar(8)
-  endTime          String            @map("end_time") @db.VarChar(8)
-  toleranceMinutes Int?              @default(15) @map("tolerance_minutes")
-  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz
-  subject          Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  teacher          User              @relation("TeacherSchedules", fields: [teacherId], references: [id], onDelete: Cascade)
-  classroom        Classroom?        @relation(fields: [classroomId], references: [id], onDelete: SetNull)
-  academicPeriod   AcademicPeriod    @relation(fields: [academicPeriodId], references: [id], onDelete: Cascade)
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String?            @map("tenant_id") @db.Uuid
+  subjectId        String             @map("subject_id") @db.Uuid
+  teacherId        String             @map("teacher_id") @db.Uuid
+  classroomId      String?            @map("classroom_id") @db.Uuid
+  academicPeriodId String             @map("academic_period_id") @db.Uuid
+  dayOfWeek        Int                @map("day_of_week")
+  startTime        String             @map("start_time") @db.VarChar(8)
+  endTime          String             @map("end_time") @db.VarChar(8)
+  toleranceMinutes Int?               @default(15) @map("tolerance_minutes")
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  subject          Subject            @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher          User               @relation("TeacherSchedules", fields: [teacherId], references: [id], onDelete: Cascade)
+  classroom        Classroom?         @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  academicPeriod   AcademicPeriod     @relation(fields: [academicPeriodId], references: [id], onDelete: Cascade)
   attendance       AttendanceRecord[]
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   @@map("schedules")
 }
@@ -147,6 +207,7 @@ enum AttendanceStatus {
 
 model AttendanceRecord {
   id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String?          @map("tenant_id") @db.Uuid
   scheduleId   String           @map("schedule_id") @db.Uuid
   studentId    String           @map("student_id") @db.Uuid
   date         DateTime         @db.Date
@@ -158,6 +219,8 @@ model AttendanceRecord {
   registrar    User?            @relation("RegisteredByAttendance", fields: [registeredBy], references: [id], onDelete: SetNull)
   tardiness    Tardiness?
   justification Justification?
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   @@unique([studentId, scheduleId, date])
   @@map("attendance_records")
@@ -182,6 +245,7 @@ enum JustificationStatus {
 
 model Justification {
   id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String?             @map("tenant_id") @db.Uuid
   attendanceRecordId String              @unique @map("attendance_record_id") @db.Uuid
   reason             String
   evidenceUrl        String?             @map("evidence_url") @db.VarChar(255)
@@ -193,11 +257,14 @@ model Justification {
   attendanceRecord   AttendanceRecord    @relation(fields: [attendanceRecordId], references: [id], onDelete: Cascade)
   reviewer           User?               @relation("ReviewedByJustification", fields: [reviewedBy], references: [id], onDelete: SetNull)
 
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
   @@map("justifications")
 }
 
 model AuditLog {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String?  @map("tenant_id") @db.Uuid
   userId     String?  @map("user_id") @db.Uuid
   action     String   @db.VarChar(100)
   entityName String   @map("entity_name") @db.VarChar(100)
@@ -209,5 +276,68 @@ model AuditLog {
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
   user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
   @@map("audit_logs")
+}
+
+model Notification {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String?  @map("tenant_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  title     String   @db.VarChar(200)
+  message   String
+  type      String   @db.VarChar(50)
+  read      Boolean? @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model TolerancePolicy {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String?  @map("tenant_id") @db.Uuid
+  scope            String   @db.VarChar(20)
+  careerId         String?  @map("career_id") @db.Uuid
+  subjectId        String?  @map("subject_id") @db.Uuid
+  toleranceMinutes Int      @default(10) @map("tolerance_minutes")
+  absentMinutes    Int      @default(15) @map("absent_minutes")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  tenant  Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  career  Career?  @relation(fields: [careerId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, scope, careerId, subjectId])
+  @@map("tolerance_policies")
+}
+
+model Holiday {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String?  @map("tenant_id") @db.Uuid
+  date      DateTime @db.Date
+  name      String   @db.VarChar(150)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, date])
+  @@map("holidays")
+}
+
+model TenantSetting {
+  tenantId                          String   @id @map("tenant_id") @db.Uuid
+  unexcusedAbsenceThresholdPercent  Decimal  @default(20.0) @map("unexcused_absence_threshold_percent") @db.Decimal(5, 2)
+  enableEmailAlerts                 Boolean  @default(true) @map("enable_email_alerts")
+  alertRecipients                   String[] @default([]) @map("alert_recipients")
+  createdAt                         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                         DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_settings")
 }

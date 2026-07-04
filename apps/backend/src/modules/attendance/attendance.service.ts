@@ -1,15 +1,16 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { SupabaseService } from '../../supabase/supabase.service';
-import { BulkAttendanceDto, AttendanceStatus } from './dto/bulk-attendance.dto';
+import { PrismaService } from '../../prisma/prisma.service';
+import { BulkAttendanceDto, AttendanceStatus as DtoStatus } from './dto/bulk-attendance.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
+import { AttendanceStatus } from '@prisma/client';
 
 @Injectable()
 export class AttendanceService {
   private readonly logger = new Logger(AttendanceService.name);
 
   constructor(
-    private readonly supabaseService: SupabaseService,
+    private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
     private readonly auditService: AuditService,
   ) {}
@@ -19,17 +20,17 @@ export class AttendanceService {
    * junto con su estado de asistencia para una fecha dada.
    */
   async getStudentsForSchedule(scheduleId: string, date: string) {
-    const supabase = this.supabaseService.getClient();
-
     // 1. Obtener los detalles del horario y la asignatura asociada
-    const { data: schedule, error: scheduleError } = await supabase
-      .from('schedules')
-      .select('*, subject:subjects(*), classroom:classrooms(*)')
-      .eq('id', scheduleId)
-      .single();
+    const schedule = await this.prisma.schedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        subject: true,
+        classroom: true,
+      },
+    });
 
-    if (scheduleError || !schedule) {
-      this.logger.error(`Error al obtener horario ${scheduleId}: ${scheduleError?.message}`);
+    if (!schedule) {
+      this.logger.error(`Horario no encontrado: ${scheduleId}`);
       throw new NotFoundException(`El horario solicitado no existe`);
     }
 
@@ -39,53 +40,69 @@ export class AttendanceService {
     }
 
     // 2. Obtener todos los estudiantes activos que pertenecen a la carrera de la asignatura
-    const { data: students, error: studentsError } = await supabase
-      .from('users')
-      .select('id, first_name, last_name, email, career_id')
-      .eq('role_id', 'estudiante')
-      .eq('career_id', subject.career_id)
-      .eq('is_active', true)
-      .order('last_name', { ascending: true })
-      .order('first_name', { ascending: true });
-
-    if (studentsError) {
-      this.logger.error(`Error al obtener estudiantes para la carrera ${subject.career_id}: ${studentsError.message}`);
-      throw new BadRequestException('No se pudieron recuperar los estudiantes inscritos');
-    }
+    const students = await this.prisma.user.findMany({
+      where: {
+        roleId: 'estudiante',
+        careerId: subject.careerId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        careerId: true,
+      },
+      orderBy: [
+        { lastName: 'asc' },
+        { firstName: 'asc' },
+      ],
+    });
 
     // 3. Obtener los registros de asistencia existentes para ese horario y fecha
-    const { data: attendanceRecords, error: attendanceError } = await supabase
-      .from('attendance_records')
-      .select('*, tardiness(delay_minutes, is_excused), justifications(reason, status)')
-      .eq('schedule_id', scheduleId)
-      .eq('date', date);
-
-    if (attendanceError) {
-      this.logger.error(`Error al obtener asistencia para el horario ${scheduleId} en la fecha ${date}: ${attendanceError.message}`);
-      throw new BadRequestException('Error al recuperar registros de asistencia previos');
-    }
+    const parsedDate = new Date(date);
+    const attendanceRecords = await this.prisma.attendanceRecord.findMany({
+      where: {
+        scheduleId: scheduleId,
+        date: parsedDate,
+      },
+      include: {
+        tardiness: {
+          select: {
+            delayMinutes: true,
+            isExcused: true,
+          },
+        },
+        justification: {
+          select: {
+            reason: true,
+            status: true,
+          },
+        },
+      },
+    });
 
     // 4. Cruzar estudiantes con sus registros de asistencia (si existen)
     const studentsWithAttendance = students.map((student) => {
-      const record = attendanceRecords?.find((r) => r.student_id === student.id);
+      const record = attendanceRecords.find((r) => r.studentId === student.id);
       
       return {
         id: student.id,
-        first_name: student.first_name,
-        last_name: student.last_name,
+        first_name: student.firstName,
+        last_name: student.lastName,
         email: student.email,
         attendance: record
           ? {
               recordId: record.id,
-              status: record.status,
-              registeredBy: record.registered_by,
-              registeredAt: record.registered_at,
-              delayMinutes: record.tardiness?.delay_minutes ?? null,
-              isExcusedTardiness: record.tardiness?.is_excused ?? null,
-              justification: record.justifications
+              status: record.status.toString(),
+              registeredBy: record.registeredBy,
+              registeredAt: record.registeredAt,
+              delayMinutes: record.tardiness?.delayMinutes ?? null,
+              isExcusedTardiness: record.tardiness?.isExcused ?? null,
+              justification: record.justification
                 ? {
-                    reason: record.justifications.reason,
-                    status: record.justifications.status,
+                    reason: record.justification.reason,
+                    status: record.justification.status.toString(),
                   }
                 : null,
             }
@@ -96,10 +113,10 @@ export class AttendanceService {
     return {
       schedule: {
         id: schedule.id,
-        day_of_week: schedule.day_of_week,
-        start_time: schedule.start_time,
-        end_time: schedule.end_time,
-        tolerance_minutes: schedule.tolerance_minutes ?? 15,
+        day_of_week: schedule.dayOfWeek,
+        start_time: schedule.startTime,
+        end_time: schedule.endTime,
+        tolerance_minutes: schedule.toleranceMinutes ?? 15,
         classroom: schedule.classroom ? schedule.classroom.name : 'No asignada',
         subject: {
           id: subject.id,
@@ -118,25 +135,25 @@ export class AttendanceService {
    */
   async registerBulkAttendance(dto: BulkAttendanceDto, registeredByUserId: string) {
     const { scheduleId, date, records } = dto;
-    const supabase = this.supabaseService.getClient();
+    const parsedDate = new Date(date);
 
     // 0. Obtener detalles del usuario para identificar su tenant_id
-    const { data: currentUser } = await supabase
-      .from('users')
-      .select('tenant_id')
-      .eq('id', registeredByUserId)
-      .single();
+    const currentUser = await this.prisma.user.findUnique({
+      where: { id: registeredByUserId },
+      select: { tenantId: true },
+    });
 
-    const tenantId = currentUser?.tenant_id;
+    const tenantId = currentUser?.tenantId;
 
     if (tenantId) {
       // Validar si la fecha es un día feriado o inhábil
-      const { data: holiday } = await supabase
-        .from('holidays')
-        .select('name')
-        .eq('tenant_id', tenantId)
-        .eq('date', date)
-        .maybeSingle();
+      const holiday = await this.prisma.holiday.findFirst({
+        where: {
+          tenantId: tenantId,
+          date: parsedDate,
+        },
+        select: { name: true },
+      });
 
       if (holiday) {
         throw new BadRequestException(
@@ -146,87 +163,103 @@ export class AttendanceService {
     }
 
     // Obtener los registros de asistencia previos antes de modificarlos para la auditoría
-    const { data: previousRecords } = await supabase
-      .from('attendance_records')
-      .select('student_id, status')
-      .eq('schedule_id', scheduleId)
-      .eq('date', date);
+    const previousRecords = await this.prisma.attendanceRecord.findMany({
+      where: {
+        scheduleId: scheduleId,
+        date: parsedDate,
+      },
+      select: {
+        studentId: true,
+        status: true,
+      },
+    });
 
     const oldValues = {
       scheduleId,
       date,
-      records: previousRecords?.map((r) => ({
-        studentId: r.student_id,
-        status: r.status,
-      })) || [],
+      records: previousRecords.map((r) => ({
+        studentId: r.studentId,
+        status: r.status.toString(),
+      })),
     };
 
     // 1. Obtener detalles del horario para validar la tolerancia y hora de inicio
-    const { data: schedule, error: scheduleError } = await supabase
-      .from('schedules')
-      .select('*, subject:subjects(career_id)')
-      .eq('id', scheduleId)
-      .single();
+    const schedule = await this.prisma.schedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        subject: {
+          select: { careerId: true },
+        },
+      },
+    });
 
-    if (scheduleError || !schedule) {
+    if (!schedule) {
       throw new NotFoundException(`El horario con ID ${scheduleId} no existe`);
     }
 
-    let tolerance = schedule.tolerance_minutes ?? 10;
+    let tolerance = schedule.toleranceMinutes ?? 10;
     let absentMinutes = 15; // Límite por defecto para falta automática
 
     if (tenantId) {
       // a. Buscar política global
-      const { data: globalPolicy } = await supabase
-        .from('tolerance_policies')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('scope', 'global')
-        .maybeSingle();
+      const globalPolicy = await this.prisma.tolerancePolicy.findFirst({
+        where: {
+          tenantId: tenantId,
+          scope: 'global',
+        },
+      });
 
       // b. Buscar política específica de carrera
       let careerPolicy = null;
-      if (schedule.subject?.career_id) {
-        const { data: cPol } = await supabase
-          .from('tolerance_policies')
-          .select('*')
-          .eq('tenant_id', tenantId)
-          .eq('scope', 'career')
-          .eq('career_id', schedule.subject.career_id)
-          .maybeSingle();
-        careerPolicy = cPol;
+      if (schedule.subject?.careerId) {
+        careerPolicy = await this.prisma.tolerancePolicy.findFirst({
+          where: {
+            tenantId: tenantId,
+            scope: 'career',
+            careerId: schedule.subject.careerId,
+          },
+        });
       }
 
       // c. Buscar política específica de materia
-      const { data: subjectPolicy } = await supabase
-        .from('tolerance_policies')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('scope', 'subject')
-        .eq('subject_id', schedule.subject_id)
-        .maybeSingle();
+      const subjectPolicy = await this.prisma.tolerancePolicy.findFirst({
+        where: {
+          tenantId: tenantId,
+          scope: 'subject',
+          subjectId: schedule.subjectId,
+        },
+      });
 
       // Seleccionar política por orden de precedencia (Materia > Carrera > Global)
       const activePolicy = subjectPolicy || careerPolicy || globalPolicy;
       if (activePolicy) {
-        tolerance = activePolicy.tolerance_minutes;
-        absentMinutes = activePolicy.absent_minutes;
+        tolerance = activePolicy.toleranceMinutes;
+        absentMinutes = activePolicy.absentMinutes;
       }
     }
 
-    const startTimeStr = schedule.start_time; // HH:MM:SS
-
+    const startTimeStr = schedule.startTime; // HH:MM:SS
     const results = [];
-
 
     // Procesar secuencialmente para garantizar la integridad y manejo de tardanzas
     for (const recordItem of records) {
       const { studentId, status: originalStatus, delayMinutes: providedDelay } = recordItem;
-      let finalStatus = originalStatus;
+      let finalStatus: AttendanceStatus = AttendanceStatus.presente;
       let calculatedDelay = 0;
 
+      // Traducir el estado de DtoStatus a Prisma enum
+      if (originalStatus === DtoStatus.PRESENTE) {
+        finalStatus = AttendanceStatus.presente;
+      } else if (originalStatus === DtoStatus.AUSENTE) {
+        finalStatus = AttendanceStatus.ausente;
+      } else if (originalStatus === DtoStatus.JUSTIFICADO) {
+        finalStatus = AttendanceStatus.justificado;
+      } else if (originalStatus === DtoStatus.TARDE) {
+        finalStatus = AttendanceStatus.tarde;
+      }
+
       // Lógica de cálculo de retardo y tolerancia automatizada
-      if (originalStatus === AttendanceStatus.TARDE) {
+      if (originalStatus === DtoStatus.TARDE) {
         if (providedDelay !== undefined && providedDelay !== null) {
           calculatedDelay = providedDelay;
         } else {
@@ -235,7 +268,6 @@ export class AttendanceService {
           if (date === todayStr) {
             calculatedDelay = this.calculateDelayInMinutes(startTimeStr);
           } else {
-            // Valor por defecto en edición retroactiva sin minutos provistos
             calculatedDelay = 1;
           }
         }
@@ -243,13 +275,13 @@ export class AttendanceService {
         // Si los minutos de tardanza superan el límite de ausencia automática,
         // el sistema lo computa automáticamente como inasistencia (AUSENTE)
         if (calculatedDelay > absentMinutes) {
-          finalStatus = AttendanceStatus.AUSENTE;
-          calculatedDelay = 0; // Al pasar a ausente, no se registra tardanza en la tabla tardiness
+          finalStatus = AttendanceStatus.ausente;
+          calculatedDelay = 0; // Al pasar a ausente, no se registra tardanza
           this.logger.log(
             `Estudiante ${studentId} superó límite de ausencia automática (${calculatedDelay}min > ${absentMinutes}min). Registrado automáticamente como AUSENTE.`,
           );
         } else if (calculatedDelay > tolerance) {
-          finalStatus = AttendanceStatus.TARDE;
+          finalStatus = AttendanceStatus.tarde;
           this.logger.log(
             `Estudiante ${studentId} superó tolerancia pero está dentro del margen de tardanza (${calculatedDelay}min > ${tolerance}min). Registrado como TARDE.`,
           );
@@ -257,18 +289,14 @@ export class AttendanceService {
       }
 
       // 2. Buscar si ya existe un registro de asistencia previo
-      const { data: existingRecord, error: searchError } = await supabase
-        .from('attendance_records')
-        .select('id, status')
-        .eq('schedule_id', scheduleId)
-        .eq('student_id', studentId)
-        .eq('date', date)
-        .maybeSingle();
-
-      if (searchError) {
-        this.logger.error(`Error al buscar asistencia previa para estudiante ${studentId}: ${searchError.message}`);
-        continue;
-      }
+      const existingRecord = await this.prisma.attendanceRecord.findFirst({
+        where: {
+          studentId: studentId,
+          scheduleId: scheduleId,
+          date: parsedDate,
+        },
+        select: { id: true },
+      });
 
       let recordId: string;
 
@@ -276,88 +304,69 @@ export class AttendanceService {
         recordId = existingRecord.id;
 
         // Actualizar registro existente
-        const { error: updateError } = await supabase
-          .from('attendance_records')
-          .update({
+        await this.prisma.attendanceRecord.update({
+          where: { id: recordId },
+          data: {
             status: finalStatus,
-            registered_by: registeredByUserId,
-            registered_at: new Date().toISOString(),
-          })
-          .eq('id', recordId);
+            registeredBy: registeredByUserId,
+            registeredAt: new Date(),
+          },
+        });
 
-        if (updateError) {
-          this.logger.error(`Error al actualizar asistencia ${recordId}: ${updateError.message}`);
-          throw new BadRequestException(`No se pudo actualizar la asistencia del estudiante con ID ${studentId}`);
-        }
-
-        // Manejar tabla 'tardiness' (relación 1:1 con attendance_records)
-        if (finalStatus === AttendanceStatus.TARDE) {
-          const { data: existingTardiness } = await supabase
-            .from('tardiness')
-            .select('id')
-            .eq('attendance_record_id', recordId)
-            .maybeSingle();
+        // Manejar tabla 'tardiness'
+        if (finalStatus === AttendanceStatus.tarde) {
+          const existingTardiness = await this.prisma.tardiness.findFirst({
+            where: { attendanceRecordId: recordId },
+          });
 
           if (existingTardiness) {
-            // Actualizar minutos de demora
-            await supabase
-              .from('tardiness')
-              .update({ delay_minutes: calculatedDelay })
-              .eq('id', existingTardiness.id);
+            await this.prisma.tardiness.update({
+              where: { id: existingTardiness.id },
+              data: { delayMinutes: calculatedDelay },
+            });
           } else {
-            // Crear registro de tardanza
-            await supabase
-              .from('tardiness')
-              .insert({
-                attendance_record_id: recordId,
-                delay_minutes: calculatedDelay,
-              });
+            await this.prisma.tardiness.create({
+              data: {
+                attendanceRecordId: recordId,
+                delayMinutes: calculatedDelay,
+              },
+            });
           }
         } else {
           // Si el estado ya no es "tarde", eliminar registro de tardanza asociado si existiera
-          await supabase
-            .from('tardiness')
-            .delete()
-            .eq('attendance_record_id', recordId);
+          await this.prisma.tardiness.deleteMany({
+            where: { attendanceRecordId: recordId },
+          });
         }
       } else {
         // Insertar nuevo registro de asistencia
-        const { data: newRecord, error: insertError } = await supabase
-          .from('attendance_records')
-          .insert({
-            schedule_id: scheduleId,
-            student_id: studentId,
-            date: date,
+        const newRecord = await this.prisma.attendanceRecord.create({
+          data: {
+            scheduleId,
+            studentId,
+            date: parsedDate,
             status: finalStatus,
-            registered_by: registeredByUserId,
-          })
-          .select('id')
-          .single();
-
-        if (insertError || !newRecord) {
-          this.logger.error(`Error al insertar asistencia para estudiante ${studentId}: ${insertError?.message}`);
-          throw new BadRequestException(`No se pudo registrar la asistencia del estudiante con ID ${studentId}`);
-        }
+            registeredBy: registeredByUserId,
+            tenantId,
+          },
+          select: { id: true },
+        });
 
         recordId = newRecord.id;
 
         // Insertar en tabla tardiness si corresponde
-        if (finalStatus === AttendanceStatus.TARDE) {
-          const { error: tardinessError } = await supabase
-            .from('tardiness')
-            .insert({
-              attendance_record_id: recordId,
-              delay_minutes: calculatedDelay,
-            });
-
-          if (tardinessError) {
-            this.logger.error(`Error al insertar tardanza para registro ${recordId}: ${tardinessError.message}`);
-          }
+        if (finalStatus === AttendanceStatus.tarde) {
+          await this.prisma.tardiness.create({
+            data: {
+              attendanceRecordId: recordId,
+              delayMinutes: calculatedDelay,
+            },
+          });
         }
       }
 
       // Si el estado final es AUSENTE o TARDE, gatillar verificación de alertas en segundo plano (fire & forget)
-      if (finalStatus === AttendanceStatus.AUSENTE || finalStatus === AttendanceStatus.TARDE) {
+      if (finalStatus === AttendanceStatus.ausente || finalStatus === AttendanceStatus.tarde) {
         this.checkAndTriggerAlerts(studentId, scheduleId).catch((err) =>
           this.logger.error(`Error en checkAndTriggerAlerts para estudiante ${studentId}: ${err.message}`),
         );
@@ -373,7 +382,7 @@ export class AttendanceService {
       results.push({
         studentId,
         status: finalStatus,
-        delayMinutes: finalStatus === AttendanceStatus.TARDE ? calculatedDelay : null,
+        delayMinutes: finalStatus === AttendanceStatus.tarde ? calculatedDelay : null,
       });
     }
 
@@ -382,12 +391,12 @@ export class AttendanceService {
       date,
       records: results.map((r) => ({
         studentId: r.studentId,
-        status: r.status,
+        status: r.status.toString(),
         delayMinutes: r.delayMinutes,
       })),
     };
 
-    // Registrar de forma asíncrona en audit_logs de Supabase Cloud
+    // Registrar de forma asíncrona en audit_logs
     this.auditService
       .writeLog(
         registeredByUserId,
@@ -406,7 +415,11 @@ export class AttendanceService {
       scheduleId,
       date,
       processedRecordsCount: results.length,
-      records: results,
+      records: results.map((r) => ({
+        studentId: r.studentId,
+        status: r.status.toString(),
+        delayMinutes: r.delayMinutes,
+      })),
     };
   }
 
@@ -431,7 +444,7 @@ export class AttendanceService {
       return Math.floor(diffMs / 1000 / 60); // Convertir ms a minutos enteros
     } catch (e) {
       this.logger.error(`Error al calcular minutos de demora: ${e.message}`);
-      return 1; // Fallback por defecto si hay error en formateo de fecha
+      return 1;
     }
   }
 
@@ -440,42 +453,41 @@ export class AttendanceService {
    * y dispara una alerta si cae por debajo del 80%.
    */
   private async checkAndTriggerAlerts(studentId: string, scheduleId: string): Promise<void> {
-    const supabase = this.supabaseService.getClient();
-
     try {
       // 1. Obtener la asignatura ligada a este schedule
-      const { data: schedule } = await supabase
-        .from('schedules')
-        .select('subject_id')
-        .eq('id', scheduleId)
-        .single();
+      const schedule = await this.prisma.schedule.findUnique({
+        where: { id: scheduleId },
+        select: { subjectId: true },
+      });
 
-      if (!schedule?.subject_id) return;
+      if (!schedule?.subjectId) return;
 
-      const subjectId = schedule.subject_id;
+      const subjectId = schedule.subjectId;
 
       // 2. Obtener todos los horarios para esta asignatura
-      const { data: schedules } = await supabase
-        .from('schedules')
-        .select('id')
-        .eq('subject_id', subjectId);
+      const schedules = await this.prisma.schedule.findMany({
+        where: { subjectId: subjectId },
+        select: { id: true },
+      });
 
-      const scheduleIds = schedules?.map((s) => s.id) ?? [];
+      const scheduleIds = schedules.map((s) => s.id);
       if (scheduleIds.length === 0) return;
 
       // 3. Obtener todos los registros de asistencia del alumno para esa asignatura
-      const { data: records } = await supabase
-        .from('attendance_records')
-        .select('status')
-        .eq('student_id', studentId)
-        .in('schedule_id', scheduleIds);
+      const records = await this.prisma.attendanceRecord.findMany({
+        where: {
+          studentId: studentId,
+          scheduleId: { in: scheduleIds },
+        },
+        select: { status: true },
+      });
 
-      const total = records?.length ?? 0;
+      const total = records.length;
       if (total < 3) return; // Esperar al menos 3 clases para generar alertas analíticas de tendencia
 
       let validAttendance = 0;
-      records?.forEach((r) => {
-        if (r.status === 'presente' || r.status === 'tarde' || r.status === 'justificado') {
+      records.forEach((r) => {
+        if (r.status === AttendanceStatus.presente || r.status === AttendanceStatus.tarde || r.status === AttendanceStatus.justificado) {
           validAttendance++;
         }
       });
@@ -496,74 +508,69 @@ export class AttendanceService {
    * Si supera el umbral configurado por el tenant (default 20%), despacha correos automáticos.
    */
   private async checkUnexcusedAbsenceThreshold(studentId: string, scheduleId: string, tenantId: string): Promise<void> {
-    const supabase = this.supabaseService.getClient();
-
     try {
       if (!tenantId) return;
 
       // 1. Obtener la configuración del tenant (umbral)
-      const { data: settings } = await supabase
-        .from('tenant_settings')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .maybeSingle();
+      const settings = await this.prisma.tenantSetting.findUnique({
+        where: { tenantId: tenantId },
+      });
 
-      const thresholdPercent = settings ? parseFloat(settings.unexcused_absence_threshold_percent) : 20.0;
-      const enableEmail = settings ? settings.enable_email_alerts : true;
-      const alertRecipients = settings ? settings.alert_recipients : [];
+      const thresholdPercent = settings ? parseFloat(settings.unexcusedAbsenceThresholdPercent.toString()) : 20.0;
+      const enableEmail = settings ? settings.enableEmailAlerts : true;
+      const alertRecipients = settings ? settings.alertRecipients : [];
 
       if (!enableEmail) return;
 
       // 2. Obtener asignatura ligada a este schedule
-      const { data: schedule } = await supabase
-        .from('schedules')
-        .select('subject_id')
-        .eq('id', scheduleId)
-        .single();
+      const schedule = await this.prisma.schedule.findUnique({
+        where: { id: scheduleId },
+        select: { subjectId: true },
+      });
 
-      if (!schedule?.subject_id) return;
-      const subjectId = schedule.subject_id;
+      if (!schedule?.subjectId) return;
+      const subjectId = schedule.subjectId;
 
       // 3. Obtener todos los schedules de esta asignatura
-      const { data: schedules } = await supabase
-        .from('schedules')
-        .select('id')
-        .eq('subject_id', subjectId);
+      const schedules = await this.prisma.schedule.findMany({
+        where: { subjectId: subjectId },
+        select: { id: true },
+      });
 
-      const scheduleIds = schedules?.map((s) => s.id) ?? [];
+      const scheduleIds = schedules.map((s) => s.id);
       if (scheduleIds.length === 0) return;
 
       // 4. Obtener todos los registros de asistencia del estudiante para esta materia
-      const { data: records } = await supabase
-        .from('attendance_records')
-        .select('status')
-        .eq('student_id', studentId)
-        .in('schedule_id', scheduleIds);
+      const records = await this.prisma.attendanceRecord.findMany({
+        where: {
+          studentId: studentId,
+          scheduleId: { in: scheduleIds },
+        },
+        select: { status: true },
+      });
 
-      const totalClasses = records?.length ?? 0;
+      const totalClasses = records.length;
       if (totalClasses < 3) return; // Se requiere un mínimo de clases tomadas para establecer métricas
 
-      const unexcusedAbsences = records?.filter((r) => r.status === 'ausente').length ?? 0;
+      const unexcusedAbsences = records.filter((r) => r.status === AttendanceStatus.ausente).length;
       const unexcusedRate = (unexcusedAbsences / totalClasses) * 100;
 
       // 5. Si supera el umbral configurado (ej: 20%), despachar alerta
       if (unexcusedRate > thresholdPercent) {
         // Obtener datos del alumno
-        const { data: student } = await supabase
-          .from('users')
-          .select('first_name, last_name, email')
-          .eq('id', studentId)
-          .single();
+        const student = await this.prisma.user.findUnique({
+          where: { id: studentId },
+          select: { firstName: true, lastName: true, email: true },
+        });
 
         // Obtener nombre de la asignatura
-        const { data: subject } = await supabase
-          .from('subjects')
-          .select('name')
-          .eq('id', subjectId)
-          .single();
+        const subject = await this.prisma.subject.findUnique({
+          where: { id: subjectId },
+          select: { name: true },
+        });
 
         if (student && subject) {
-          const studentName = `${student.first_name} ${student.last_name}`;
+          const studentName = `${student.firstName} ${student.lastName}`;
           const subjectName = subject.name;
           const subjectLine = `[RIESGO ACADÉMICO] Límite de Inasistencias Superado en ${subjectName}`;
 
