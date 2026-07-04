@@ -1,0 +1,213 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model AcademicPeriod {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String     @db.VarChar(100)
+  startDate DateTime   @map("start_date") @db.Date
+  endDate   DateTime   @map("end_date") @db.Date
+  isActive  Boolean?   @default(true) @map("is_active")
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  schedules Schedule[]
+
+  @@map("academic_periods")
+}
+
+model Department {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @unique @db.VarChar(150)
+  code      String   @unique @db.VarChar(10)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  careers   Career[]
+
+  @@map("departments")
+}
+
+model Career {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  departmentId String     @map("department_id") @db.Uuid
+  name         String     @db.VarChar(150)
+  code         String     @unique @db.VarChar(10)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  subjects     Subject[]
+  users        User[]
+
+  @@map("careers")
+}
+
+model Role {
+  id          String           @id @db.VarChar(50)
+  name        String           @db.VarChar(100)
+  description String?
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @db.VarChar(100)
+  name        String           @db.VarChar(100)
+  description String?
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.VarChar(50)
+  permissionId String     @map("permission_id") @db.VarChar(100)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id        String   @id @db.Uuid
+  email     String   @unique @db.VarChar(255)
+  firstName String   @map("first_name") @db.VarChar(100)
+  lastName  String   @map("last_name") @db.VarChar(100)
+  roleId    String?  @map("role_id") @db.VarChar(50)
+  careerId  String?  @map("career_id") @db.Uuid
+  isActive  Boolean? @default(true) @map("is_active")
+  avatarUrl String?  @map("avatar_url") @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  role   Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  career Career? @relation(fields: [careerId], references: [id], onDelete: SetNull)
+
+  schedulesTeached            Schedule[]         @relation("TeacherSchedules")
+  attendanceRecordsRegistered AttendanceRecord[] @relation("RegisteredByAttendance")
+  attendanceRecordsStudent    AttendanceRecord[] @relation("StudentAttendance")
+  auditLogs                   AuditLog[]
+  justificationsReviewed      Justification[]    @relation("ReviewedByJustification")
+
+  @@map("users")
+}
+
+model Subject {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  careerId  String     @map("career_id") @db.Uuid
+  name      String     @db.VarChar(150)
+  code      String     @unique @db.VarChar(20)
+  credits   Int?       @default(0)
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  career    Career     @relation(fields: [careerId], references: [id], onDelete: Cascade)
+  schedules Schedule[]
+
+  @@map("subjects")
+}
+
+model Classroom {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String     @db.VarChar(50)
+  building  String?    @db.VarChar(100)
+  capacity  Int?
+  schedules Schedule[]
+
+  @@map("classrooms")
+}
+
+model Schedule {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  subjectId        String            @map("subject_id") @db.Uuid
+  teacherId        String            @map("teacher_id") @db.Uuid
+  classroomId      String?           @map("classroom_id") @db.Uuid
+  academicPeriodId String            @map("academic_period_id") @db.Uuid
+  dayOfWeek        Int               @map("day_of_week")
+  startTime        String            @map("start_time") @db.VarChar(8)
+  endTime          String            @map("end_time") @db.VarChar(8)
+  toleranceMinutes Int?              @default(15) @map("tolerance_minutes")
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  subject          Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher          User              @relation("TeacherSchedules", fields: [teacherId], references: [id], onDelete: Cascade)
+  classroom        Classroom?        @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  academicPeriod   AcademicPeriod    @relation(fields: [academicPeriodId], references: [id], onDelete: Cascade)
+  attendance       AttendanceRecord[]
+
+  @@map("schedules")
+}
+
+enum AttendanceStatus {
+  presente
+  tarde
+  ausente
+  justificado
+}
+
+model AttendanceRecord {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scheduleId   String           @map("schedule_id") @db.Uuid
+  studentId    String           @map("student_id") @db.Uuid
+  date         DateTime         @db.Date
+  status       AttendanceStatus
+  registeredBy String?          @map("registered_by") @db.Uuid
+  registeredAt DateTime         @default(now()) @map("registered_at") @db.Timestamptz
+  schedule     Schedule         @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  student      User             @relation("StudentAttendance", fields: [studentId], references: [id], onDelete: Cascade)
+  registrar    User?            @relation("RegisteredByAttendance", fields: [registeredBy], references: [id], onDelete: SetNull)
+  tardiness    Tardiness?
+  justification Justification?
+
+  @@unique([studentId, scheduleId, date])
+  @@map("attendance_records")
+}
+
+model Tardiness {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attendanceRecordId String           @unique @map("attendance_record_id") @db.Uuid
+  delayMinutes       Int              @map("delay_minutes")
+  isExcused          Boolean?         @default(false) @map("is_excused")
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  attendanceRecord   AttendanceRecord @relation(fields: [attendanceRecordId], references: [id], onDelete: Cascade)
+
+  @@map("tardiness")
+}
+
+enum JustificationStatus {
+  pendiente
+  aprobada
+  rechazada
+}
+
+model Justification {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attendanceRecordId String              @unique @map("attendance_record_id") @db.Uuid
+  reason             String
+  evidenceUrl        String?             @map("evidence_url") @db.VarChar(255)
+  status             JustificationStatus @default(pendiente)
+  reviewedBy         String?             @map("reviewed_by") @db.Uuid
+  reviewedAt         DateTime?           @map("reviewed_at")
+  comments           String?
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  attendanceRecord   AttendanceRecord    @relation(fields: [attendanceRecordId], references: [id], onDelete: Cascade)
+  reviewer           User?               @relation("ReviewedByJustification", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@map("justifications")
+}
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String   @db.VarChar(100)
+  entityName String   @map("entity_name") @db.VarChar(100)
+  entityId   String?  @map("entity_id") @db.Uuid
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}

@@ -4,6 +4,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SupabaseModule } from './supabase/supabase.module';
+import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { ReportsModule } from './modules/reports/reports.module';
@@ -17,6 +18,7 @@ import { HealthModule } from './modules/health/health.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    PrismaModule,
     SupabaseModule,
     AuthModule,
     AttendanceModule,
