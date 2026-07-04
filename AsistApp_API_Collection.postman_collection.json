@@ -1,0 +1,496 @@
+{
+	"info": {
+		"_postman_id": "45d167f4-d576-43b8-a6d1-447551cc4b9e",
+		"name": "AsistApp API Collection",
+		"description": "Colección oficial de endpoints para el control de asistencia académica, retardos y notificaciones en AsistApp.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Autenticación y Perfil",
+			"item": [
+				{
+					"name": "Endpoint público de prueba",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/auth/public",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"public"
+							]
+						},
+						"description": "Endpoint público para verificar conectividad y saludo del backend."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener perfil del usuario autenticado",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						},
+						"description": "Retorna la información del usuario autenticado y su rol mapeado."
+					},
+					"response": []
+				},
+				{
+					"name": "Endpoint exclusivo para Administradores",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/auth/admin-only",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"admin-only"
+							]
+						},
+						"description": "Verifica privilegios del rol Admin."
+					},
+					"response": []
+				},
+				{
+					"name": "Endpoint exclusivo para Docentes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/auth/docente-only",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"docente-only"
+							]
+						},
+						"description": "Verifica privilegios del rol Docente."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Usuarios (Administración)",
+			"item": [
+				{
+					"name": "Crear un nuevo usuario institucional",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"nuevo.docente@universidad.edu\",\n  \"first_name\": \"Carlos\",\n  \"last_name\": \"Mendoza\",\n  \"role_id\": \"docente\",\n  \"career_id\": null\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"users"
+							]
+						},
+						"description": "Permite a un administrador registrar un nuevo perfil y asociarlo al Tenant actual."
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar un usuario institucional existente",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"Carlos Humberto\",\n  \"last_name\": \"Mendoza\",\n  \"role_id\": \"docente\",\n  \"career_id\": null\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/users/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"users",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "uuid-del-usuario-a-editar"
+								}
+							]
+						},
+						"description": "Actualiza el perfil y metadatos de un usuario registrado."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Asistencias (Control)",
+			"item": [
+				{
+					"name": "Obtener estudiantes y su estado de asistencia",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/attendance/schedule/:scheduleId/date/:date",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"attendance",
+								"schedule",
+								":scheduleId",
+								"date",
+								":date"
+							],
+							"variable": [
+								{
+									"key": "scheduleId",
+									"value": "uuid-del-horario"
+								},
+								{
+									"key": "date",
+									"value": "2026-05-20"
+								}
+							]
+						},
+						"description": "Devuelve la lista de estudiantes inscritos y sus actas de firma previas."
+					},
+					"response": []
+				},
+				{
+					"name": "Registrar o actualizar asistencia en bloque",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"scheduleId\": \"uuid-del-horario-aqui\",\n  \"date\": \"2026-05-20\",\n  \"records\": [\n    {\n      \"studentId\": \"uuid-del-estudiante-1\",\n      \"status\": \"presente\"\n    },\n    {\n      \"studentId\": \"uuid-del-estudiante-2\",\n      \"status\": \"tarde\",\n      \"delayMinutes\": 18\n    },\n    {\n      \"studentId\": \"uuid-del-estudiante-3\",\n      \"status\": \"ausente\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/attendance/bulk",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"attendance",
+								"bulk"
+							]
+						},
+						"description": "Registra el lote oficial de asistencias procesando tolerancias y umbrales de inasistencias en el backend."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Reportes y Analíticas",
+			"item": [
+				{
+					"name": "Obtener métricas y KPIs globales",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reports/dashboard-stats",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"reports",
+								"dashboard-stats"
+							]
+						},
+						"description": "Métricas generales de tasa de asistencia, ausentismo acumulado y volumen de justificaciones pendientes."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener historial analítico temporal",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reports/tendencias?limit=15",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"reports",
+								"tendencias"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "15"
+								}
+							]
+						},
+						"description": "Serie de tiempo diaria de asistencia acumulada para graficación de tendencias."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener analíticas detalladas de un estudiante",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reports/student/:studentId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"reports",
+								"student",
+								":studentId"
+							],
+							"variable": [
+								{
+									"key": "studentId",
+									"value": "uuid-del-estudiante"
+								}
+							]
+						},
+						"description": "Desglose completo de inasistencias, tardanzas y tasa de asistencia de un estudiante por materia."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener analíticas agregadas de una asignatura",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reports/subject/:subjectId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"reports",
+								"subject",
+								":subjectId"
+							],
+							"variable": [
+								{
+									"key": "subjectId",
+									"value": "uuid-de-la-materia"
+								}
+							]
+						},
+						"description": "Estadísticas acumuladas de asistencia y rendimiento para una materia específica."
+					},
+					"response": []
+				},
+				{
+					"name": "Exportar registros de asistencia en formato tabular CSV",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reports/export/csv?startDate=2026-05-01&endDate=2026-05-31",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"reports",
+								"export",
+								"csv"
+							],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2026-05-01"
+								},
+								{
+									"key": "endDate",
+									"value": "2026-05-31"
+								}
+							]
+						},
+						"description": "Descarga directa de actas oficiales en formato CSV legible por MS Excel."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Notificaciones",
+			"item": [
+				{
+					"name": "Listar notificaciones del usuario autenticado",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notifications",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications"
+							]
+						},
+						"description": "Listado cronológico de notificaciones y alertas recibidas."
+					},
+					"response": []
+				},
+				{
+					"name": "Marcar una notificación específica como leída",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/:id/read",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications",
+								":id",
+								"read"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "uuid-de-la-notificacion"
+								}
+							]
+						},
+						"description": "Marca una alerta particular como leída por el usuario."
+					},
+					"response": []
+				},
+				{
+					"name": "Marcar todas las notificaciones del usuario como leídas",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/read-all",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications",
+								"read-all"
+							]
+						},
+						"description": "Marca de forma masiva todas las notificaciones pendientes del perfil actual."
+					},
+					"response": []
+				},
+				{
+					"name": "Enviar alerta de inasistencia por correo (Manual / Test)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"studentId\": \"uuid-del-estudiante-aqui\",\n  \"subjectId\": \"uuid-de-la-materia-aqui\",\n  \"rate\": 0.72\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notifications/test-threshold-alert",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications",
+								"test-threshold-alert"
+							]
+						},
+						"description": "Endpoint de prueba para gatillar manualmente plantillas HTML de alerta por inasistencia crítica."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{jwt_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:4000/api",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "tu_token_aqui",
+			"type": "string"
+		}
+	]
+}
