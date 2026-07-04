@@ -42,9 +42,11 @@ interface AttendanceRecord {
   subject_code: string;
   classroom_name: string;
 }
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 export default function AsistenciaPage() {
   const { token, user: currentUser } = useAuthStore();
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const { addToast } = useToastStore();
   const { defaultAttendanceMethod, setDefaultAttendanceMethod, savePreferences } = useUiStore();
 
@@ -93,6 +95,44 @@ export default function AsistenciaPage() {
       setAttendanceMethod(defaultAttendanceMethod);
     }
   }, [defaultAttendanceMethod]);
+
+  // Load enrolled students dynamically for the selected schedule from NestJS backend API
+  useEffect(() => {
+    if (!isModalOpen || !selectedScheduleId || !selectedDate) return;
+
+    const fetchStudentsForSchedule = async () => {
+      setIsLoadingStudents(true);
+      try {
+        const response = await fetch(`${API_URL}/attendance/schedule/${selectedScheduleId}/date/${selectedDate}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // Map students list
+          const mappedStudents = (data.students || []).map((s: any) => ({
+            id: s.id,
+            name: `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Estudiante'
+          }));
+          setStudents(mappedStudents);
+
+          // Populate student states with existing attendance record status if it exists, otherwise default to 'presente'
+          const initialStates: typeof studentStates = {};
+          (data.students || []).forEach((s: any) => {
+            initialStates[s.id] = (s.attendance?.status || 'presente') as any;
+          });
+          setStudentStates(initialStates);
+        }
+      } catch (err) {
+        console.error('Error fetching students from NestJS backend API:', err);
+      } finally {
+        setIsLoadingStudents(false);
+      }
+    };
+
+    fetchStudentsForSchedule();
+  }, [isModalOpen, selectedScheduleId, selectedDate, token]);
 
   // 1. Fetch form metadata (schedules & students)
   const fetchFormMetadata = async () => {
@@ -344,12 +384,29 @@ export default function AsistenciaPage() {
       let saveToDb = !hasMockSchedules && tenantId;
 
       if (saveToDb) {
-        const { error } = await supabase
-          .from('attendance_records')
-          .insert(inserts);
+        const response = await fetch(`${API_URL}/attendance/bulk`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            scheduleId: scheduleId,
+            date: selectedDate,
+            records: finalStates.map(record => {
+              const delay = checkedInMap.get(record.studentId);
+              return {
+                studentId: record.studentId,
+                status: record.status,
+                delayMinutes: delay !== undefined ? delay : null
+              };
+            })
+          })
+        });
 
-        if (error) {
-          console.error('Supabase insert failed, falling back to LocalStorage:', error);
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('NestJS bulk insert failed, falling back to LocalStorage:', errorData);
           saveToDb = false;
         }
       }
@@ -722,12 +779,25 @@ export default function AsistenciaPage() {
       let saveToDb = !hasMockSchedules && tenantId;
 
       if (saveToDb) {
-        const { error } = await supabase
-          .from('attendance_records')
-          .insert(inserts);
+        const response = await fetch(`${API_URL}/attendance/bulk`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            scheduleId: scheduleId,
+            date: selectedDate,
+            records: students.map(student => ({
+              studentId: student.id,
+              status: studentStates[student.id] || 'presente'
+            }))
+          })
+        });
 
-        if (error) {
-          console.error('Supabase insert failed, falling back to LocalStorage:', error);
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('NestJS bulk insert failed, falling back to LocalStorage:', errorData);
           saveToDb = false;
         }
       }
@@ -1213,27 +1283,36 @@ export default function AsistenciaPage() {
                 <label className="text-xs font-semibold tracking-wide text-zinc-600 dark:text-zinc-400">
                   Listado de Alumnos
                 </label>
-                <div className="max-h-[220px] overflow-y-auto border border-border rounded-lg bg-card divide-y divide-border">
-                  {students.map(student => (
-                    <div key={student.id} className="p-3 flex items-center justify-between gap-3 text-xs">
-                      <span className="font-semibold text-zinc-900 dark:text-zinc-50 truncate">{student.name}</span>
-                      <select
-                        value={studentStates[student.id] || 'presente'}
-                        onChange={(e) => handleStateChange(student.id, e.target.value)}
-                        className="flex h-8 rounded-md border border-border bg-background px-2 py-0.5 text-xs text-foreground transition-all focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        <option value="presente">Presente</option>
-                        <option value="tarde">Tarde</option>
-                        <option value="ausente">Ausente</option>
-                        <option value="justificado">Justificado</option>
-                      </select>
+                <div className="max-h-[220px] overflow-y-auto border border-border rounded-lg bg-card divide-y divide-border relative">
+                  {isLoadingStudents ? (
+                    <div className="p-12 text-center text-muted-foreground text-xs flex flex-col items-center justify-center space-y-2">
+                      <RefreshCw className="w-6 h-6 text-violet-500 animate-spin" />
+                      <span>Cargando estudiantes matriculados...</span>
                     </div>
-                  ))}
-                  {students.length === 0 && (
-                    <div className="p-6 text-center text-muted-foreground text-xs flex flex-col items-center justify-center">
-                      <AlertCircle className="w-5 h-5 text-amber-500 opacity-60 mb-1" />
-                      <span>No hay estudiantes registrados para este Tenant.</span>
-                    </div>
+                  ) : (
+                    <>
+                      {students.map(student => (
+                        <div key={student.id} className="p-3 flex items-center justify-between gap-3 text-xs">
+                          <span className="font-semibold text-zinc-900 dark:text-zinc-50 truncate">{student.name}</span>
+                          <select
+                            value={studentStates[student.id] || 'presente'}
+                            onChange={(e) => handleStateChange(student.id, e.target.value)}
+                            className="flex h-8 rounded-md border border-border bg-background px-2 py-0.5 text-xs text-foreground transition-all focus:outline-none focus:ring-1 focus:ring-primary"
+                          >
+                            <option value="presente">Presente</option>
+                            <option value="tarde">Tarde</option>
+                            <option value="ausente">Ausente</option>
+                            <option value="justificado">Justificado</option>
+                          </select>
+                        </div>
+                      ))}
+                      {students.length === 0 && (
+                        <div className="p-6 text-center text-muted-foreground text-xs flex flex-col items-center justify-center">
+                          <AlertCircle className="w-5 h-5 text-amber-500 opacity-60 mb-1" />
+                          <span>No hay estudiantes registrados para este horario.</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </>
