@@ -28,9 +28,3 @@ UPDATE public.departments SET tenant_id = 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51'
 UPDATE public.careers SET tenant_id = 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51' WHERE tenant_id IS NULL;
 UPDATE public.classrooms SET tenant_id = 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51' WHERE tenant_id IS NULL;
 
--- 4. Sembrar asignaturas académicas vinculadas a la carrera de Ingeniería de Sistemas (DIT)
-INSERT INTO public.subjects (id, career_id, name, code, credits, tenant_id) VALUES
-('f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a61', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21', 'Cálculo Multivariable', 'MAT-201', 4, 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51'),
-('f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a62', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21', 'Estructuras de Datos', 'INF-202', 4, 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51'),
-('f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a63', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21', 'Arquitectura de Computadoras', 'INF-203', 3, 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51')
-ON CONFLICT (code) DO NOTHING;

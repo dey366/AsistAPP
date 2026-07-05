@@ -32,8 +32,11 @@ redirect_uri = "http://localhost:54321/auth/v1/callback"
 
 
 [storage]
-enabled = true
+enabled = false
 file_size_limit = "50MB"
 
 [realtime]
 enabled = true
+
+[analytics]
+enabled = false

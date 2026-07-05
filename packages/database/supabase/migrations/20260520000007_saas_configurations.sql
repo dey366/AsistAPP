@@ -87,23 +87,4 @@ CREATE TRIGGER check_holiday_before_attendance
   BEFORE INSERT OR UPDATE ON public.attendance_records
   FOR EACH ROW EXECUTE FUNCTION public.validate_attendance_date_holiday();
 
--- 5. Sembrar datos por defecto para las configuraciones y políticas de prueba
--- Insertar configuración inicial del tenant Universidad de Deymos
-INSERT INTO public.tenant_settings (tenant_id, unexcused_absence_threshold_percent, enable_email_alerts, alert_recipients)
-VALUES ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51', 20.0, true, ARRAY['coordinacion@deymos.edu', 'supervision@deymos.edu'])
-ON CONFLICT (tenant_id) DO NOTHING;
 
--- Insertar una política de tolerancia global por defecto (10min tolerancia, 15min falta)
-INSERT INTO public.tolerance_policies (tenant_id, scope, tolerance_minutes, absent_minutes)
-VALUES ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51', 'global', 10, 15)
-ON CONFLICT (tenant_id, scope, career_id, subject_id) DO NOTHING;
-
--- Insertar una política de tolerancia por carrera (Ing. Sistemas - DIT) con 5min tolerancia y 10min falta
-INSERT INTO public.tolerance_policies (tenant_id, scope, career_id, tolerance_minutes, absent_minutes)
-VALUES ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51', 'career', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21', 5, 10)
-ON CONFLICT (tenant_id, scope, career_id, subject_id) DO NOTHING;
-
--- Sembrar un día feriado mañana para demostración y congelamiento
-INSERT INTO public.holidays (tenant_id, date, name)
-VALUES ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51', CURRENT_DATE + INTERVAL '1 day', 'Aniversario de la Institución')
-ON CONFLICT (tenant_id, date) DO NOTHING;

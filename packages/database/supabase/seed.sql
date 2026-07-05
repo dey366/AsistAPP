@@ -63,3 +63,31 @@ INSERT INTO classrooms (id, name, building, capacity) VALUES
 INSERT INTO academic_periods (id, name, start_date, end_date, is_active) VALUES
 ('d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a41', 'Ciclo Académico 2026-I', '2026-03-01', '2026-07-15', true),
 ('d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a42', 'Ciclo Académico 2026-II', '2026-08-01', '2026-12-15', false);
+
+-- 8. Sembrar asignaturas académicas vinculadas a la carrera de Ingeniería de Sistemas (DIT)
+INSERT INTO subjects (id, career_id, name, code, credits, tenant_id) VALUES
+('f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a61', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21', 'Cálculo Multivariable', 'MAT-201', 4, 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51'),
+('f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a62', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21', 'Estructuras de Datos', 'INF-202', 4, 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51'),
+('f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a63', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21', 'Arquitectura de Computadoras', 'INF-203', 3, 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51')
+ON CONFLICT (code) DO NOTHING;
+
+-- 9. Sembrar datos por defecto para las configuraciones y políticas de prueba
+-- Insertar configuración inicial del tenant Universidad de Deymos
+INSERT INTO tenant_settings (tenant_id, unexcused_absence_threshold_percent, enable_email_alerts, alert_recipients)
+VALUES ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51', 20.0, true, ARRAY['coordinacion@deymos.edu', 'supervision@deymos.edu'])
+ON CONFLICT (tenant_id) DO NOTHING;
+
+-- Insertar una política de tolerancia global por defecto (10min tolerancia, 15min falta)
+INSERT INTO tolerance_policies (tenant_id, scope, tolerance_minutes, absent_minutes)
+VALUES ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51', 'global', 10, 15)
+ON CONFLICT (tenant_id, scope, career_id, subject_id) DO NOTHING;
+
+-- Insertar una política de tolerancia por carrera (Ing. Sistemas - DIT) con 5min tolerancia y 10min falta
+INSERT INTO tolerance_policies (tenant_id, scope, career_id, tolerance_minutes, absent_minutes)
+VALUES ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51', 'career', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a21', 5, 10)
+ON CONFLICT (tenant_id, scope, career_id, subject_id) DO NOTHING;
+
+-- Sembrar un día feriado mañana para demostración y congelamiento
+INSERT INTO holidays (tenant_id, date, name)
+VALUES ('e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51', CURRENT_DATE + INTERVAL '1 day', 'Aniversario de la Institución')
+ON CONFLICT (tenant_id, date) DO NOTHING;
