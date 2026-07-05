@@ -177,14 +177,15 @@ const deserializeSubject = (s: any): any => {
 const serializeDepartment = (form: { name: string; code: string; coordinator_id: string }) => {
   return {
     name: form.name,
-    code: `${form.code.toUpperCase()}|${form.coordinator_id}`
+    code: form.code.toUpperCase(),
+    coordinator_id: form.coordinator_id || null
   };
 };
 
 const serializeCareer = (form: { name: string; code: string; department_id: string; coordinator_id: string; max_credits: number; required_classroom_type: string; required_resources: string[] }) => {
   return {
     name: form.name,
-    code: `${form.code.toUpperCase()}|${form.coordinator_id}|${form.max_credits}|${form.required_classroom_type}|${form.required_resources.join(',')}`,
+    code: form.code.toUpperCase(),
     department_id: form.department_id
   };
 };
@@ -192,7 +193,7 @@ const serializeCareer = (form: { name: string; code: string; department_id: stri
 const serializeSubject = (form: { name: string; code: string; career_id: string; semester: string; academic_year: string; credits: number; classroom_id: string; estimated_capacity: number }) => {
   return {
     name: form.name,
-    code: `${form.code.toUpperCase()}|${form.classroom_id}|${form.estimated_capacity}`,
+    code: form.code.toUpperCase(),
     career_id: form.career_id,
     semester: form.semester,
     academic_year: form.academic_year,
