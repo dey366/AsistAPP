@@ -914,20 +914,20 @@ export default function ConfiguracionPage() {
             Notificaciones
           </button>
 
-          <button
-            onClick={() => setActiveSection('tenant')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition ${
-              activeSection === 'tenant'
-                ? 'bg-brand-light text-brand border-l-2 border-brand font-bold'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-50 hover:bg-zinc-50 dark:hover:bg-zinc-900'
-            }`}
-          >
-            <Building2 className="w-4 h-4" />
-            Organización SaaS
-          </button>
-
           {(profileForm.role === 'admin' || profileForm.role === 'supervisor') && (
             <>
+              <button
+                onClick={() => setActiveSection('tenant')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition ${
+                  activeSection === 'tenant'
+                    ? 'bg-brand-light text-brand border-l-2 border-brand font-bold'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-50 hover:bg-zinc-50 dark:hover:bg-zinc-900'
+                }`}
+              >
+                <Building2 className="w-4 h-4" />
+                Organización SaaS
+              </button>
+
               <div className="h-px bg-border my-2 select-none" />
               <div className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-500 px-4 mb-1 select-none">
                 Administración SaaS

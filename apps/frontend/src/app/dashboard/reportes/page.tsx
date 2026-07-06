@@ -71,6 +71,25 @@ export default function ReportesPage() {
     savePreferences 
   } = useUiStore();
 
+  if (currentUser && !['admin', 'supervisor', 'docente'].includes(currentUser.role_id)) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 space-y-4 select-none">
+          <div className="p-4 bg-rose-50 dark:bg-rose-950/20 text-rose-600 rounded-full border border-rose-200/50">
+            <FileText className="w-12 h-12" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground">Acceso Denegado</h2>
+          <p className="text-sm text-muted-foreground max-w-md">
+            No tienes los privilegios necesarios para acceder a los reportes académicos de asistencia. Esta sección está reservada únicamente para docentes y personal administrativo.
+          </p>
+          <Button onClick={() => window.location.href = '/dashboard'}>
+            Volver al Dashboard
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   const [isLoading, setIsLoading] = useState(true);
 
   // Datasets

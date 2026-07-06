@@ -696,27 +696,8 @@ export default function DepartamentosPage() {
           .from('subjects')
           .insert([payload]);
 
-        if (error) {
-          console.warn('DB insert failed for subject, creating local mock:', error);
-          const newMock = {
-            id: `sub-new-${Date.now()}`,
-            name: subjectForm.name,
-            code: subjectForm.code.toUpperCase(),
-            career_id: subjectForm.career_id,
-            semester: subjectForm.semester,
-            academic_year: subjectForm.academic_year,
-            credits: Number(subjectForm.credits),
-            classroom_id: subjectForm.classroom_id,
-            estimated_capacity: Number(subjectForm.estimated_capacity),
-            created_at: new Date().toISOString(),
-            career_name: careers.find(c => c.id === subjectForm.career_id)?.name || 'Desconocido',
-            department_name: careers.find(c => c.id === subjectForm.career_id)?.department_name || 'Desconocido'
-          };
-          setSubjects(prev => [newMock, ...prev]);
-          addToast({ title: 'Éxito', message: 'Asignatura demo creada localmente.', type: 'success' });
-        } else {
-          addToast({ title: 'Éxito', message: 'Asignatura creada correctamente.', type: 'success' });
-        }
+        if (error) throw error;
+        addToast({ title: 'Éxito', message: 'Asignatura creada correctamente.', type: 'success' });
       }
 
       setIsSubjectModalOpen(false);
@@ -794,23 +775,8 @@ export default function DepartamentosPage() {
           .from('departments')
           .insert([payload]);
 
-        if (error) {
-          console.warn('DB insert failed for department, creating local mock:', error);
-          const newMock: Department = {
-            id: `dept-new-${Date.now()}`,
-            name: deptForm.name,
-            code: deptForm.code.toUpperCase(),
-            created_at: new Date().toISOString(),
-            careersCount: 0,
-            coordinator_id: deptForm.coordinator_id,
-            coordinator_name: coordinators.find(c => c.id === deptForm.coordinator_id)?.name || 'Sin Asignar',
-            coordinator_email: coordinators.find(c => c.id === deptForm.coordinator_id)?.email || ''
-          };
-          setDepartments(prev => [newMock, ...prev]);
-          addToast({ title: 'Éxito', message: 'Departamento demo creado localmente.', type: 'success' });
-        } else {
-          addToast({ title: 'Éxito', message: 'Departamento creado exitosamente.', type: 'success' });
-        }
+        if (error) throw error;
+        addToast({ title: 'Éxito', message: 'Departamento creado exitosamente.', type: 'success' });
       }
 
       setIsDeptModalOpen(false);
@@ -871,27 +837,8 @@ export default function DepartamentosPage() {
           .from('careers')
           .insert([payload]);
 
-        if (error) {
-          console.warn('DB insert failed for career, creating local mock:', error);
-          const newMock: Career = {
-            id: `car-new-${Date.now()}`,
-            department_id: careerForm.department_id,
-            name: careerForm.name,
-            code: careerForm.code.toUpperCase(),
-            created_at: new Date().toISOString(),
-            department_name: departments.find(d => d.id === careerForm.department_id)?.name || 'Desconocido',
-            coordinator_id: careerForm.coordinator_id,
-            coordinator_name: coordinators.find(co => co.id === careerForm.coordinator_id)?.name || 'Sin Asignar',
-            coordinator_email: coordinators.find(co => co.id === careerForm.coordinator_id)?.email || '',
-            max_credits: Number(careerForm.max_credits),
-            required_classroom_type: careerForm.required_classroom_type,
-            required_resources: careerForm.required_resources
-          };
-          setCareers(prev => [newMock, ...prev]);
-          addToast({ title: 'Éxito', message: 'Carrera demo creada localmente.', type: 'success' });
-        } else {
-          addToast({ title: 'Éxito', message: 'Carrera académica creada.', type: 'success' });
-        }
+        if (error) throw error;
+        addToast({ title: 'Éxito', message: 'Carrera académica creada.', type: 'success' });
       }
 
       setIsCareerModalOpen(false);
@@ -945,27 +892,8 @@ export default function DepartamentosPage() {
           .from('classrooms')
           .insert([payload]);
 
-        if (error) {
-          console.warn('Inserting into database failed, creating mock in localStorage instead:', error);
-          // Create local mock
-          const newMock: Classroom = {
-            id: `room-new-${Date.now()}`,
-            name: classroomForm.name,
-            building: classroomForm.building,
-            capacity: Number(classroomForm.capacity),
-            type: classroomForm.type,
-            status: classroomForm.status,
-            resources: classroomForm.resources
-          };
-          setClassrooms(prev => {
-            const updated = [newMock, ...prev];
-            localStorage.setItem('asistapp_mock_classrooms', JSON.stringify(updated));
-            return updated;
-          });
-          addToast({ title: 'Éxito', message: 'Aula demo creada localmente.', type: 'success' });
-        } else {
-          addToast({ title: 'Éxito', message: 'Aula creada correctamente.', type: 'success' });
-        }
+        if (error) throw error;
+        addToast({ title: 'Éxito', message: 'Aula creada correctamente.', type: 'success' });
       }
 
       setIsClassroomModalOpen(false);

@@ -49,6 +49,26 @@ export class AuthController {
       throw new BadRequestException(`Error al registrar en Supabase Auth: ${authError?.message}`);
     }
 
+    // Also insert directly into public.users for reliability (trigger may fail on null uuid casts)
+    const { error: dbError } = await supabase
+      .from('users')
+      .upsert({
+        id: authData.user.id,
+        email,
+        first_name,
+        last_name,
+        role_id,
+        career_id: career_id || null,
+        avatar_url: avatar_url || null,
+        ui_preferences: ui_preferences || {},
+        is_active: true,
+        tenant_id: adminUser.tenant_id || null
+      }, { onConflict: 'id' });
+
+    if (dbError) {
+      console.warn('Warning: Direct insert to users table failed (trigger may handle it):', dbError.message);
+    }
+
     return {
       status: 'success',
       message: 'Usuario creado exitosamente',

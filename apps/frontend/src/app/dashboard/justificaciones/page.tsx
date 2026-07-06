@@ -619,7 +619,7 @@ export default function JustificacionesPage() {
       header: 'Acción',
       accessor: (item: Justification) => (
         <div className="flex items-center gap-2">
-          {currentUser?.role_id !== 'estudiante' && item.status === 'pendiente' ? (
+          {['admin', 'supervisor'].includes(currentUser?.role_id || '') && item.status === 'pendiente' ? (
             <Button
               variant="default"
               size="sm"
@@ -662,7 +662,7 @@ export default function JustificacionesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {currentUser?.role_id !== 'estudiante' && (
+          {['admin', 'supervisor'].includes(currentUser?.role_id || '') && (
             <Button 
               variant="outline" 
               leftIcon={<Settings className="w-4 h-4" />}
@@ -755,7 +755,7 @@ export default function JustificacionesPage() {
           setSelectedJustification(null);
           setReviewComments('');
         }}
-        title={selectedJustification?.status === 'pendiente' && currentUser?.role_id !== 'estudiante' ? "Auditoría de Inasistencia" : "Detalles de Solicitud"}
+        title={selectedJustification?.status === 'pendiente' && ['admin', 'supervisor'].includes(currentUser?.role_id || '') ? "Auditoría de Inasistencia" : "Detalles de Solicitud"}
         footer={
           <>
             <Button variant="outline" onClick={() => setIsReviewModalOpen(false)}>
@@ -771,7 +771,7 @@ export default function JustificacionesPage() {
                 Imprimir Acta
               </Button>
             )}
-            {currentUser?.role_id !== 'estudiante' && selectedJustification?.status === 'pendiente' && (
+            {['admin', 'supervisor'].includes(currentUser?.role_id || '') && selectedJustification?.status === 'pendiente' && (
               <>
                 <Button 
                   variant="outline" 
@@ -841,7 +841,7 @@ export default function JustificacionesPage() {
             )}
 
             {/* Comments block */}
-            {selectedJustification.status === 'pendiente' && currentUser?.role_id !== 'estudiante' ? (
+            {selectedJustification.status === 'pendiente' && ['admin', 'supervisor'].includes(currentUser?.role_id || '') ? (
               <div className="flex flex-col space-y-1.5">
                 <label className="text-xs font-semibold tracking-wide text-zinc-600 dark:text-zinc-400">
                   Comentarios del Revisor / Auditor

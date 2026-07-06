@@ -62,6 +62,25 @@ export default function UsuariosPage() {
     setUsersTableColumns, 
     savePreferences 
   } = useUiStore();
+
+  if (currentUser && currentUser.role_id !== 'admin') {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 space-y-4 select-none">
+          <div className="p-4 bg-rose-50 dark:bg-rose-950/20 text-rose-600 rounded-full border border-rose-200/50">
+            <Shield className="w-12 h-12" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground">Acceso Denegado</h2>
+          <p className="text-sm text-muted-foreground max-w-md">
+            No tienes los privilegios necesarios para acceder al panel de administración de usuarios. Esta sección está reservada únicamente para administradores.
+          </p>
+          <Button onClick={() => window.location.href = '/dashboard'}>
+            Volver al Dashboard
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
   
   // States
   const [usersList, setUsersList] = useState<SystemUser[]>([]);

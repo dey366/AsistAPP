@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { DataTable } from '@/components/ui/DataTable';
 import { Button } from '@/components/ui/Button';
@@ -105,6 +106,23 @@ export default function DashboardPage() {
   
   const [isEditingTarget, setIsEditingTarget] = useState(false);
   const [newTargetVal, setNewTargetVal] = useState(90);
+
+  const router = useRouter();
+
+  // Redirigir usuarios no-admin a su dashboard según su rol
+  useEffect(() => {
+    if (!currentUser) return;
+    const role = currentUser.role_id;
+    if (role === 'docente') {
+      router.replace('/dashboard/docente');
+    } else if (role === 'estudiante') {
+      router.replace('/dashboard/estudiante');
+    } else if (role === 'supervisor') {
+      router.replace('/dashboard/supervisor');
+    }
+    // admin permanece en esta página
+  }, [currentUser, router]);
+
 
   const openManageLinks = () => {
     setIsQuickLinksOpen(true);
